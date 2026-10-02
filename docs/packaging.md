@@ -8,7 +8,7 @@ The repository contains source code and recipes. The ISO, installed profile, pri
 
 To package an existing installation, supply these local inputs:
 
-- The configured Wine profile at `prefix/`, containing the target application version.
+- The configured Wine profile at `prefix/`, containing the target application version. The [rebuild guide](rebuilding.md) documents how to create it from the required external inputs.
 - The original ISO at `.local/Acrobat.2026.x64/Adobe.Acrobat.2026.u17.x64.Multilingual.iso`.
 - Nix with flakes enabled, Python 3.11 or later, `zstd`, Bash, and standard build utilities. Source auditing uses `rg` (ripgrep).
 
@@ -31,7 +31,19 @@ If `packaging/payload/` is already prepared, skip preparation. Build from that s
 
 `build.sh all` creates `dist/nix-package`, `dist/Acrobat-26.002.21931-x86_64.AppImage`, `dist/SHA256SUMS`, and the private `dist/flake`. **Do not commit these outputs or force-add the ignored payload/media.** Checks use a separate source-only stage and do not replace the prepared private flake. Nix cache/config files stay under `state/`.
 
-Preparation requires an installed profile; an ISO alone is insufficient. The local `setup.sh` and `scripts/` utilities document the original installation workflow and expect its tools in `.local/bin/`; they are not a complete bootstrap for a fresh machine. The package build consumes the prepared installation rather than changing its activation setup.
+Preparation requires an installed profile; it does not install from the ISO. The [rebuild guide](rebuilding.md) covers `setup-tools`, the Windows Python input, `.local/bin/`, the interactive installer, and final configuration. The complete sequence has not yet been repeated from an empty checkout with the new tool bundle. The package build consumes the prepared installation rather than changing its activation setup.
+
+## What to keep in private storage
+
+Keep your private recovery files in a personal cloud folder, NAS, or external drive. The GitHub repository records the source, file names, hashes, and reconstruction steps.
+
+| Private backup | What it restores |
+| --- | --- |
+| Finished AppImage and `SHA256SUMS` | The ready-to-run bundle, including its installation seed and original ISO |
+| Optional prepared `packaging/payload/` (`prefix.tar.zst`, `manifest.json`, and the matching ISO) | The inputs for rebuilding packages without repeating installation |
+| A separate backup of the writable profile and documents, taken while Acrobat is closed | Settings and documents changed after the bundle was built |
+
+The AppImage already carries the seed and ISO; a separate payload backup makes rebuilding more convenient. Keep the payload manifest private too: it contains information about the source Windows profile. Names and hashes in the public rebuild guide do not replace the corresponding external files or guarantee that their download servers will remain available.
 
 ## Run and back up the AppImage
 

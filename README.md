@@ -14,8 +14,10 @@ Use x86_64 Linux with Nix flakes enabled, Python 3.11 or later, Bash, `zstd`, an
 
 | Input | Location |
 | --- | --- |
-| An existing, configured installation of the target release | `prefix/` |
-| The matching original ISO | `.local/Acrobat.2026.x64/Adobe.Acrobat.2026.u17.x64.Multilingual.iso` |
+| A configured installation of the target release — see the [rebuild guide](docs/rebuilding.md) | `prefix/` |
+| The matching original ISO [tested using m0nkrus's ISO] | `.local/Acrobat.2026.x64/Adobe.Acrobat.2026.u17.x64.Multilingual.iso` |
+
+`prefix/` is generated locally by Wine and the installer. The [rebuild guide](docs/rebuilding.md) records its structure, required tools, native DLL names and checksums, registry settings, and installation order. GitHub holds that recipe; keep installed files and private backups in your own storage.
 
 With Acrobat closed, run this from the project root to export that installation into the private build payload once:
 
@@ -60,7 +62,7 @@ nix run path:./dist/flake -- /path/to/document.pdf
 
 These commands run the outputs created by `build.sh`; they are not build commands. The AppImage includes Wine, the installed profile seed, compatibility fixes, fonts, and the original ISO. It needs a compatible x86_64 Linux desktop and host graphics drivers. First launch creates a writable per-user profile; later launches reuse it.
 
-For NixOS, use `github:bishalctl/acrobat-wine` as a flake input and [set the AppImage path in your system configuration](docs/packaging.md#use-a-local-appimage-in-nixos). The flake exports `lib.mkAppImagePackage { pkgs; appImage; }` and `nixosModules.appimage`. Your system repository keeps the downloaded AppImage in an ignored directory. The installed application is independent of this local checkout, which can be removed. A separate source archive, profile archive, or ISO is unnecessary.
+For NixOS, use `github:bishalctl/acrobat-wine` as a flake input and [set the AppImage path in your system configuration](docs/packaging.md#use-a-local-appimage-in-nixos). The flake exports `lib.mkAppImagePackage` and `nixosModules.appimage`. Your system repository keeps the downloaded AppImage in an ignored directory. The installed application is independent of this local checkout, which can be removed. A separate source archive, profile archive, or ISO is unnecessary.
 
 ## Desktop behavior
 
@@ -71,7 +73,7 @@ For NixOS, use `github:bishalctl/acrobat-wine` as a flake input and [set the App
 - Automatic updates are disabled for this release. GPU acceleration remains enabled; hardware compatibility has not been established on every system.
 - Normal launches log to `journalctl --user -t acrobat-wine -b` and rotating files.
 
-See [packaging and private backups](docs/packaging.md) for AppImage recovery, NixOS integration, profiles, and build commands. See [compatibility and validation](docs/compatibility.md) for the patches and known limits.
+See [packaging and private backups](docs/packaging.md) for AppImage recovery, NixOS integration, profiles, and build commands; [rebuilding the prefix](docs/rebuilding.md) for installation inputs and structure; and [compatibility and validation](docs/compatibility.md) for the patches and known limits.
 
 ## Source layout
 
@@ -101,5 +103,3 @@ The source exporter uses an explicit file list, rejects binaries, symlinks, and 
 `.gitignore` does not remove files already tracked or committed. If reusing an existing Git repository, review its index and history separately; a new repository created from the source export avoids carrying old history into the upload. Keep finished bundles and personal media in private storage.
 
 This is an independent experiment, not an official Adobe project. Adobe's application and trademarks, Wine, and bundled third-party components retain their respective ownership and licenses.
-
-Media reference: validation used the m0nkrus release of Acrobat v26.2.21931 x64 Multilingual.

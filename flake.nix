@@ -41,6 +41,7 @@
       packages.${system} = {
         wine = wineRuntime;
         appimage-runtime = runtime;
+        setup-tools = import ./packaging/setup-tools.nix { inherit pkgs; };
       } // pkgs.lib.optionalAttrs hasPayload {
         default = package;
         acrobat = package;

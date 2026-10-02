@@ -8,6 +8,7 @@ config/no-updates.reg
 config/wine-compat.reg
 docs/compatibility.md
 docs/packaging.md
+docs/rebuilding.md
 flake.lock
 flake.nix
 modules/acrobat-appimage.nix
@@ -23,6 +24,7 @@ packaging/native_file_chooser.py
 packaging/package.nix
 packaging/prepare.sh
 packaging/source-files.txt
+packaging/setup-tools.nix
 packaging/source_tree.py
 packaging/stage-source.py
 packaging/tests/appimage-module.nix
