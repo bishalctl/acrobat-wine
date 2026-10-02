@@ -149,10 +149,11 @@ def graphics_info():
     return result
 
 
-def run(command, log_path, prefix, version, observer=processes, log=None):
+def run(command, log_path, prefix, version, observer=processes, log=None, phase='application'):
     log = log or Log(log_path)
-    log.write(f'Starting Acrobat {version}', event='startup',
-              ACROBAT_PREFIX=prefix, ACROBAT_VERSION=version)
+    description = 'Acrobat preference setup' if phase == 'preferences' else 'Acrobat'
+    log.write(f'Starting {description} {version}', event='startup',
+              ACROBAT_PREFIX=prefix, ACROBAT_VERSION=version, ACROBAT_PHASE=phase)
     log.write(json.dumps(graphics_info(), sort_keys=True), event='graphics')
     log.write(f'WINEDEBUG={os.environ.get("WINEDEBUG", "<unset>")}; '
               f'WINEDLLOVERRIDES={os.environ.get("WINEDLLOVERRIDES", "<unset>")}', event='runtime')
@@ -307,12 +308,12 @@ def run(command, log_path, prefix, version, observer=processes, log=None):
             signal.signal(sig, previous)
     status = process.poll()
     result = 128 + requested_signal if requested_signal else status
-    log.write(f'Acrobat exited: status={status}; elapsed={time.monotonic() - started:.1f}s; '
+    log.write(f'{description} exited: status={status}; elapsed={time.monotonic() - started:.1f}s; '
               f'fatal_message_observed={observed_fatal}; stop_signal={requested_signal}. '
               'Status 1 alone is not proof of a crash.',
               priority=3 if observed_fatal or (status is not None and status < 0 and not requested_signal) else 6,
               event='exit', ACROBAT_EXIT_STATUS=result, ACROBAT_CHILD_STATUS=status,
-              ACROBAT_STOP_SIGNAL=requested_signal)
+              ACROBAT_STOP_SIGNAL=requested_signal, ACROBAT_PHASE=phase)
     return result if result >= 0 else 128 - result
 
 

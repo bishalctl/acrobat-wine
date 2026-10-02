@@ -9,6 +9,8 @@ Windows Registry Editor Version 5.00
 ; Use the classic interface described by the working Wine recipes.
 [HKEY_CURRENT_USER\Software\Adobe\Adobe Acrobat\DC\AVGeneral]
 "bEnableAV2"=dword:00000000
+; Open each PDF in its own document window.
+"bSDIMode"=dword:00000001
 
 ; Keep GPU acceleration enabled, including during startup troubleshooting.
 [HKEY_CURRENT_USER\Software\Adobe\Adobe Acrobat\DC\CEF]

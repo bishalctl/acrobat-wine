@@ -66,12 +66,14 @@ For NixOS, use `github:bishalctl/acrobat-wine` as a flake input and [set the App
 
 ## Desktop behavior
 
+- PDFs open in separate document windows by default, reusing the running Acrobat session. Later changes to the tab preference remain yours.
 - Ordinary Open/Browse dialogs use the Linux desktop's file-picker portal, with Wine as a fallback. Save As and specialized dialogs retain Wine's implementation.
 - On Hyprland, the application uses XWayland. Small Acrobat tips remain popups; window placement and focus follow your desktop settings.
 - Closing the last application window returns control to the terminal. Ctrl+C stops that launch and its remaining Adobe helpers.
 - The launching user's home and filesystem are available through `H:` and `Z:`, subject to Unix permissions.
 - Automatic updates are disabled for this release. GPU acceleration remains enabled; hardware compatibility has not been established on every system.
 - Normal launches log to `journalctl --user -t acrobat-wine -b` and rotating files.
+- The NixOS launcher caches successful AppImage verification until the file changes, avoiding a full-image read for every PDF opened.
 
 See [packaging and private backups](docs/packaging.md) for AppImage recovery, NixOS integration, profiles, and build commands; [rebuilding the prefix](docs/rebuilding.md) for installation inputs and structure; and [compatibility and validation](docs/compatibility.md) for the patches and known limits.
 

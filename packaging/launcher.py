@@ -35,6 +35,17 @@ def registry_string(value):
     return '"' + value.replace('\\', '\\\\').replace('"', '\\"') + '"'
 
 
+def separate_document_windows(text):
+    """Set the default while personalizing an offline, newly extracted profile."""
+    key = r'Software\\Adobe\\Adobe Acrobat\\DC\\AVGeneral'
+    section = re.search(r'(?ms)^\[' + re.escape(key) + r'\][^\n]*\n(.*?)(?=^\[|\Z)', text)
+    setting = '"bSDIMode"=dword:00000001\n'
+    if section:
+        body = re.sub(r'(?m)^"bSDIMode"=[^\n]*\n?', '', section[1])
+        return text[:section.start(1)] + body.rstrip('\n') + '\n' + setting + '\n' + text[section.end(1):]
+    return text.rstrip('\n') + f'\n\n[{key}]\n' + setting
+
+
 def personalize(prefix, source_user):
     username = pwd.getpwuid(os.getuid()).pw_name
     old = prefix / 'drive_c/users' / source_user
@@ -59,7 +70,7 @@ def personalize(prefix, source_user):
         text += (f'\n[{key}\\\\c{index}]\n"aFS"="DOS"\n"sDI"=hex:{encoded}\n'
                  f'"tDisplayText"={registry_string(label)}\n'
                  f'"tDIText"={registry_string(location)}\n')
-    registry.write_text(text)
+    registry.write_text(separate_document_windows(text))
     configure_host_files(prefix)
 
 
@@ -105,7 +116,8 @@ def initialize(config, data, log):
             staging.rename(prefix)
             record = {'schema': 1, 'application_version': config['version'],
                       'wine_version': config['wine_version'],
-                      'seed_sha256': actual, 'unix_uid': os.getuid()}
+                      'seed_sha256': actual, 'unix_uid': os.getuid(),
+                      'document_window_default': 1}
             temporary = data / '.profile.json.tmp'
             temporary.write_text(json.dumps(record, indent=2) + '\n')
             temporary.replace(marker)
@@ -114,6 +126,34 @@ def initialize(config, data, log):
                 shutil.rmtree(staging)
         log.write(f'Profile ready: {prefix}', event='initialize')
     return prefix
+
+
+def migrate_document_windows(config, data, prefix, log_path, log):
+    """Apply the new default once to older profiles through Wine's registry API.
+
+    A running wineserver owns user.reg, so never edit that file in an existing
+    profile. Later changes made in Acrobat Preferences remain the user's choice.
+    """
+    with (data / 'initialize.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        marker = data / 'profile.json'
+        record = json.loads(marker.read_text())
+        if record.get('document_window_default') == 1:
+            return 0
+        log.write('Setting the default to a separate window for each PDF.', event='preferences')
+        status = run([config['wine'], 'reg.exe', 'add',
+                      r'HKCU\Software\Adobe\Adobe Acrobat\DC\AVGeneral',
+                      '/v', 'bSDIMode', '/t', 'REG_DWORD', '/d', '1', '/f'],
+                     log_path, prefix, config['version'], log=log, phase='preferences')
+        if status:
+            return status
+        record['document_window_default'] = 1
+        temporary = data / '.profile.json.tmp'
+        temporary.write_text(json.dumps(record, indent=2) + '\n')
+        temporary.replace(marker)
+        log.write('Separate document windows configured; restart any already-open Acrobat windows '
+                  'to load the preference.', event='preferences')
+    return 0
 
 
 def windows_argument(argument):
@@ -148,6 +188,7 @@ def main():
                           'journal': 'journalctl --user -t acrobat-wine -b',
                           'gpu_disabled_by_launcher': False,
                           'native_open_dialog': 'desktop portal (Wine fallback)',
+                          'document_windows_default': 'separate (user preference after first launch)',
                           'root_drive': 'Z:\\', 'home_drive': 'H:\\',
                           'original_iso_bundled': True, 'graphics': graphics_info()}, indent=2))
         return 0
@@ -176,6 +217,9 @@ def main():
         if os.environ.get('WINEDLLOVERRIDES'):
             overrides += ';' + os.environ['WINEDLLOVERRIDES']
         os.environ['WINEDLLOVERRIDES'] = overrides
+        status = migrate_document_windows(config, data, prefix, log_path, log)
+        if status:
+            return status
         executable = prefix / 'drive_c/Program Files/Adobe/Acrobat DC/Acrobat/Acrobat.exe'
         command = [config['wine'], str(executable)] + [windows_argument(a) for a in args.files]
         with NativeFileChooser(state / 'run', prefix, log):

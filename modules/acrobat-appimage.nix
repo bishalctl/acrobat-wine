@@ -3,7 +3,7 @@ let
   cfg = config.programs.acrobat-appimage;
   package = import ../packaging/appimage-package.nix {
     inherit pkgs;
-    inherit (cfg) appImage sha256;
+    inherit (cfg) appImage sha256 verifyEveryLaunch;
   };
 in {
   options.programs.acrobat-appimage = {
@@ -24,7 +24,16 @@ in {
       default = null;
       description = ''
         Optional SHA-256 checksum as 64 lowercase hexadecimal characters.
-        When set, the launcher verifies the image before executing it.
+        Successful verification is cached per user until the file identity,
+        size, modification time, change time, or configured checksum changes.
+      '';
+    };
+    verifyEveryLaunch = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Recompute the configured SHA-256 on every launch instead of using the
+        metadata cache. This rereads the entire AppImage for each PDF opened.
       '';
     };
   };

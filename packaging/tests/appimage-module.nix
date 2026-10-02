@@ -37,6 +37,11 @@ let
     sha256 = builtins.hashString "sha256" fixtureText;
   };
   unpinned = evaluate { appImage = fixturePath; };
+  uncached = evaluate {
+    appImage = fixturePath;
+    sha256 = builtins.hashString "sha256" fixtureText;
+    verifyEveryLaunch = true;
+  };
   missing = evaluate { appImage = "/nonexistent-acrobat-test/Acrobat.AppImage"; };
   notExecutable = evaluate { appImage = "${plain}"; };
   wrongHash = evaluate { appImage = fixturePath; sha256 = lib.concatStrings (lib.replicate 64 "0"); };
@@ -51,6 +56,7 @@ let
   commands = pkgs.writeText "acrobat-module-test-commands.json" (builtins.toJSON {
     good = command good;
     unpinned = command unpinned;
+    uncached = command uncached;
     missing = command missing;
     notExecutable = command notExecutable;
     wrongHash = command wrongHash;

@@ -15,8 +15,14 @@ ENVIRONMENT = {key: value for key, value in os.environ.items()
 
 
 class AppImageModuleTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.cache = Path(self.temporary.name) / 'cache'
+        self.environment = dict(ENVIRONMENT, XDG_CACHE_HOME=str(self.cache))
+
     def run_command(self, name, *arguments):
-        return subprocess.run([COMMANDS[name], *arguments], env=ENVIRONMENT,
+        return subprocess.run([COMMANDS[name], *arguments], env=self.environment,
                               capture_output=True, timeout=15)
 
     def test_arguments_and_image_path_preserve_spaces_unicode_and_shell_characters(self):
@@ -29,6 +35,20 @@ class AppImageModuleTests(unittest.TestCase):
         result = self.run_command('unpinned', 'document.pdf')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, b'document.pdf\0')
+        self.assertFalse(self.cache.exists())
+
+    def test_verification_cache_is_reused_by_the_installed_launcher(self):
+        self.assertEqual(self.run_command('good', 'first.pdf').returncode, 0)
+        entry, = self.cache.glob('acrobat-wine/verified-appimages/*.json')
+        before = entry.stat()
+        self.assertEqual(self.run_command('good', 'second.pdf').stdout, b'second.pdf\0')
+        self.assertEqual(entry.stat().st_mtime_ns, before.st_mtime_ns)
+        self.assertIn('sha256', json.loads(entry.read_text()))
+
+    def test_every_launch_verification_can_be_requested(self):
+        self.assertEqual(self.run_command('uncached', 'first.pdf').returncode, 0)
+        self.assertEqual(self.run_command('uncached', 'second.pdf').stdout, b'second.pdf\0')
+        self.assertFalse(self.cache.exists())
 
     def test_normal_application_exit_status_is_preserved(self):
         for status in (0, 1, 130):
@@ -56,7 +76,7 @@ class AppImageModuleTests(unittest.TestCase):
     def test_exec_preserves_pid_and_terminal_signal_delivery(self):
         with tempfile.TemporaryDirectory() as directory:
             pidfile = Path(directory) / 'pid'
-            environment = dict(ENVIRONMENT, ACROBAT_TEST_PIDFILE=str(pidfile))
+            environment = dict(self.environment, ACROBAT_TEST_PIDFILE=str(pidfile))
             process = subprocess.Popen([COMMANDS['good'], '--wait'], env=environment,
                                        stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
             try:

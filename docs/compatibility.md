@@ -13,6 +13,8 @@ This experiment targets **v26.2.21931 x64 Multilingual**, whose executable repor
 | Fonts and appearance | The private seed preserves its configured Selawik/Adobe fonts and classic dark interface. Fonts are not included in Git. |
 | Filesystem access | `H:` and `Z:` expose home and `/` with the launching user's permissions. |
 | Process lifetime | The supervisor follows this launch's Acrobat processes, handles detached restarts, and stops leftover Adobe helpers on close or terminal interruption. |
+| Document windows | Separate windows are the initial default (`bSDIMode=1`). Existing profiles receive a one-time migration through Wine; later user preferences are preserved. |
+| Launch verification | The external AppImage launcher caches a successful SHA-256 check against file identity and nanosecond timestamps. Changed files are reverified, including replacements and writes that restore the old modification time. |
 | Diagnostics | Normal launches emit journal records and rotating logs, including relevant crash and graphics/process details. Exit status 1 alone is not classified as a crash. |
 | Release pinning | Updater policies and disabled updater helpers preserve the installed release. GPU acceleration remains enabled. |
 
@@ -32,6 +34,8 @@ The prepared personal bundle was tested with a separate profile and private X di
 - Native Open selection, cancellation, multiple files, and the retained Wine Save As dialog.
 - Popup classification against eleven real Wine window shapes, including the reported blue Acrobat tip and a regular document dialog.
 - Normal window close, terminal interrupts, detached helper cleanup, and document forwarding to an existing instance.
+- Two PDFs rendered in distinct responsive windows; closing the first preserved the second, and closing the last ended the launcher without leftover Adobe helpers. The upgrade preference migration ran once.
+- Verification cache hits without another content read, concurrent launches, changed or replaced images, changed expected checksums, corrupt/unavailable caches, and forced full verification.
 - Embedded AppImage namespace/runtime use, journal startup/exit records, and recovery of the unchanged ISO.
 
 The automated launcher tests run with `./packaging/build.sh check`; they do not need the private payload. They exercise launch ownership and shutdown, profile/export behavior, and a simulated D-Bus portal. The optional [`popup_windows.py`](../packaging/tests/popup_windows.py) probe needs Windows Python and a private X display. Local screenshots, logs, host details, and session records are intentionally excluded from the repository.

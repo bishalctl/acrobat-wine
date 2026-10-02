@@ -124,6 +124,66 @@ class Initialization(unittest.TestCase):
             self.assertIn('Linux filesystem (/)', text)
             self.assertIn('"tDIText"="/H/"', text)
             self.assertIn('"tDIText"="/Z/"', text)
+            self.assertIn('"bSDIMode"=dword:00000001', text)
+
+    def test_new_profile_uses_windows_without_changing_other_preferences(self):
+        original = (r'''WINE REGISTRY Version 2
+
+[Software\\Adobe\\Adobe Acrobat\\DC\\AVGeneral] 123
+"bEnableAV2"=dword:00000000
+"bSDIMode"=dword:00000000
+
+[Software\\Adobe\\Adobe Acrobat\\DC\\CEF]
+"bDisableGPU"=dword:00000000
+''')
+        changed = launcher.separate_document_windows(original)
+        self.assertEqual(changed.count('"bSDIMode"'), 1)
+        self.assertIn('"bSDIMode"=dword:00000001', changed)
+        self.assertIn('"bEnableAV2"=dword:00000000', changed)
+        self.assertIn('"bDisableGPU"=dword:00000000', changed)
+        self.assertEqual(launcher.separate_document_windows(changed), changed)
+
+
+class WindowPreferenceMigration(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.data = Path(self.temporary.name)
+        self.marker = self.data / 'profile.json'
+        self.marker.write_text(json.dumps({'schema': 1, 'application_version': 'test'}))
+        self.prefix = self.data / 'prefix'
+        self.prefix.mkdir()
+        self.registry = self.prefix / 'user.reg'
+        self.registry.write_bytes(b'existing registry owned by wineserver')
+
+    def migrate(self, status):
+        class Log:
+            def write(self, *args, **kwargs): pass
+        with patch.object(launcher, 'run', return_value=status) as run:
+            result = launcher.migrate_document_windows(
+                {'wine': '/test/wine', 'version': 'test'}, self.data, self.prefix,
+                self.data / 'log', Log())
+        self.assertEqual(self.registry.read_bytes(), b'existing registry owned by wineserver')
+        return result, run
+
+    def test_existing_profile_is_migrated_once_using_wine_and_later_preferences_are_respected(self):
+        status, run = self.migrate(0)
+        self.assertEqual(status, 0)
+        self.assertEqual(run.call_args.args[0], [
+            '/test/wine', 'reg.exe', 'add', r'HKCU\Software\Adobe\Adobe Acrobat\DC\AVGeneral',
+            '/v', 'bSDIMode', '/t', 'REG_DWORD', '/d', '1', '/f'])
+        self.assertEqual(run.call_args.kwargs['phase'], 'preferences')
+        self.assertEqual(json.loads(self.marker.read_text())['document_window_default'], 1)
+        status, run = self.migrate(0)
+        self.assertEqual(status, 0)
+        run.assert_not_called()
+
+    def test_failure_or_interruption_does_not_mark_migration_complete(self):
+        for expected in [1, 130]:
+            with self.subTest(status=expected):
+                status, run = self.migrate(expected)
+                self.assertEqual(status, expected)
+                self.assertNotIn('document_window_default', json.loads(self.marker.read_text()))
 
 
 class DesktopLaunch(unittest.TestCase):

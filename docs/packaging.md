@@ -127,7 +127,13 @@ The equivalent module interface is also available through the same GitHub input:
 }
 ```
 
-Use either interface to install the `acrobat-wine` command and **Acrobat (Wine)** desktop entry. Both use the bundle's own launcher, so window placement, file picking, profiles, shutdown, and journal logging retain the AppImage's behavior. The default PDF application is unchanged. If the file is missing or lacks executable permission, the launcher explains how to restore it. With `sha256` set, it verifies the image on every launch; a replacement bundle needs its new checksum in the configuration.
+Use either interface to install the `acrobat-wine` command and **Acrobat (Wine)** desktop entry. Both use the bundle's own launcher, so window placement, file picking, profiles, shutdown, and journal logging retain the AppImage's behavior. The default PDF application is unchanged. If the file is missing or lacks executable permission, the launcher explains how to restore it. A replacement bundle needs its new checksum in the configuration when `sha256` is set.
+
+With `sha256` set, the first launch verifies the entire image and caches success under `$XDG_CACHE_HOME/acrobat-wine/verified-appimages` (normally `~/.cache/acrobat-wine/verified-appimages`). Later desktop launches and PDF opens use that record while the device, inode, size, modification time, change time, and configured checksum match. Simultaneous launches share the verification lock. A missing, invalid, or unavailable cache causes full verification; a checksum mismatch prevents execution.
+
+This avoids rereading the multi-gigabyte image for every document. The cache trusts file metadata in the current user's account. For a full content check on every launch, pass `verifyEveryLaunch = true;` to `mkAppImagePackage`, or set `programs.acrobat-appimage.verifyEveryLaunch = true;`. The option applies when `sha256` is configured. Removing the verification cache also forces the next launch to hash the image again.
+
+The cache lives in the source-only flake launcher and also speeds up existing bundles after updating the `acrobat` input and rebuilding the system. Runtime changes inside an AppImage, including the separate-document-window default, require the corresponding newer bundle. Close Acrobat before replacing its AppImage, then update the configured checksum and rebuild.
 
 On another machine, restore the system configuration and download the same AppImage to that path. No rebuild is needed just to restore the file. Keep the AppImage available at its configured location; Nix generations do not contain a backup of it. Later writable profile changes still need their own backup.
 
@@ -169,6 +175,8 @@ These paths follow `XDG_DATA_HOME` and `XDG_STATE_HOME`. `ACROBAT_DATA_HOME` and
 
 Ordinary Open/Browse dialogs use the host's configured `xdg-desktop-portal` FileChooser backend. The desktop decides which picker appears; it is not a separately launched file-manager window. Save As, specialized dialogs, and systems without a working portal use Wine dialogs. Set `ACROBAT_NATIVE_FILE_CHOOSER=0` to disable the bridge. After replacing a bundle, close its existing application windows before relaunching to load the new runtime.
 
+PDFs open in separate document windows by default, using the running Acrobat session for subsequent files. Fresh profiles receive this preference during initialization. On the first application launch after upgrading an older bundle, the launcher applies the preference once through Wine's registry API and records the migration in `profile.json`. Existing registry files are not edited while Wine may own them. Any already-running Acrobat must be restarted to load the setting. Later choices in **Edit → Preferences → General → Open documents as new tabs in the same window** are respected.
+
 Closing the last window preserves save prompts, then returns control to the terminal and cleans up that launch's remaining Adobe helpers. Ctrl+C also stops the launch, escalating if Wine ignores the interrupt. Independent launches and shared Wine servers are preserved.
 
 ```sh
@@ -176,7 +184,7 @@ journalctl --user -t acrobat-wine -b
 journalctl --user -t acrobat-wine -f
 ```
 
-The journal records startup, Wine output, relevant process/graphics information, exceptions, and exit status. Rotating file logs also work without journald. `--diagnostics` prints resolved paths and graphics availability without starting Wine. Treat diagnostic output as private: it can contain filenames and host information.
+The journal records startup, Wine output, relevant process/graphics information, exceptions, and exit status. One-time preference setup has `ACROBAT_PHASE=preferences`; application startup and exit use `ACROBAT_PHASE=application`. Rotating file logs also work without journald. `--diagnostics` prints resolved paths and graphics availability without starting Wine. Treat diagnostic output as private: it can contain filenames and host information.
 
 ## Prepare a GitHub upload
 

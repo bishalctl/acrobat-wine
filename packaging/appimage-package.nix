@@ -1,4 +1,4 @@
-{ pkgs, appImage, sha256 ? null }:
+{ pkgs, appImage, sha256 ? null, verifyEveryLaunch ? false }:
 let
   lib = pkgs.lib;
   launcher = pkgs.writeShellApplication {
@@ -26,9 +26,10 @@ let
         fail 126 "The AppImage needs executable permission. Run: $executable_hint"
       fi
       ${lib.optionalString (sha256 != null) ''
-        actual=$(sha256sum < "$image")
-        [[ "''${actual%% *}" == ${lib.escapeShellArg sha256} ]] || \
-          fail 1 "The AppImage checksum does not match the configured release: $image"
+        if ! verification_error=$(${pkgs.python3}/bin/python3 ${./verify_appimage.py} \
+            "$image" ${lib.escapeShellArg sha256} ${lib.optionalString verifyEveryLaunch "--always"} 2>&1); then
+          fail 1 "$verification_error"
+        fi
       ''}
 
       # The configured file is independent of the packaging checkout.

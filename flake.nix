@@ -82,6 +82,7 @@
           cp ${./scripts/supervise.py} tests/supervise.py
           cp ${./scripts/host_files.py} tests/host_files.py
           cp ${./packaging/source_tree.py} tests/source_tree.py
+          cp ${./packaging/verify_appimage.py} tests/verify_appimage.py
           cd tests
           python3 -m unittest -v
           touch "$out"

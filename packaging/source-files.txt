@@ -34,6 +34,8 @@ packaging/tests/test_launcher.py
 packaging/tests/test_native_file_chooser.py
 packaging/tests/test_source_tree.py
 packaging/tests/test_supervisor.py
+packaging/tests/test_verify_appimage.py
+packaging/verify_appimage.py
 packaging/wine-runtime.nix
 scripts/capture-window.py
 scripts/configure-font-rendering.py
