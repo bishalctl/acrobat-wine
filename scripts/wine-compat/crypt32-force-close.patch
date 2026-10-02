@@ -1,0 +1,32 @@
+--- a/dlls/crypt32/store.c
++++ b/dlls/crypt32/store.c
+@@ -257,13 +257,15 @@
+     return TRUE;
+ }
+ 
+-static void free_contexts(struct list *list)
++static void free_contexts(struct list *list, BOOL force)
+ {
+     context_t *context, *next;
+ 
+     LIST_FOR_EACH_ENTRY_SAFE(context, next, list, context_t, u.entry)
+     {
+         TRACE("freeing %p\n", context);
++        /* Forced closure invalidates outstanding contexts by contract. */
++        if (force) InterlockedExchange(&context->ref, 0);
+         memstore_free_context(context);
+     }
+ }
+@@ -377,9 +379,9 @@
+     if(ref && !(flags & CERT_CLOSE_STORE_FORCE_FLAG))
+         return (flags & CERT_CLOSE_STORE_CHECK_FLAG) ? CRYPT_E_PENDING_CLOSE : ERROR_SUCCESS;
+ 
+-    free_contexts(&store->certs);
+-    free_contexts(&store->crls);
+-    free_contexts(&store->ctls);
++    free_contexts(&store->certs, flags & CERT_CLOSE_STORE_FORCE_FLAG);
++    free_contexts(&store->crls, flags & CERT_CLOSE_STORE_FORCE_FLAG);
++    free_contexts(&store->ctls, flags & CERT_CLOSE_STORE_FORCE_FLAG);
+     store->cs.DebugInfo->Spare[0] = 0;
+     DeleteCriticalSection(&store->cs);
+     CRYPT_FreeStore(&store->hdr);

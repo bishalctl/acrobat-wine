@@ -1,0 +1,19 @@
+Windows Registry Editor Version 5.00
+
+; Keep the installation at the version supplied on the ISO.
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Adobe\Adobe Acrobat\DC\FeatureLockDown]
+"bUpdater"=dword:00000000
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Policies\Adobe\Adobe Acrobat\DC\FeatureLockDown]
+"bUpdater"=dword:00000000
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Adobe\Adobe ARM\Legacy\Acrobat\{AC76BA86-1033-FFFF-7760-BC15014EA700}]
+"Mode"=dword:00000000
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Adobe\Adobe ARM\Legacy\Acrobat\{AC76BA86-1033-FFFF-7760-BC15014EA700}]
+"Mode"=dword:00000000
+
+[HKEY_CURRENT_USER\Software\Wine\DllOverrides]
+"*AdobeARM.exe"=""
+"*AdobeARMHelper.exe"=""
+"*armsvc.exe"=""

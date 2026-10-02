@@ -1,0 +1,40 @@
+--- a/dlls/comdlg32/itemdlg.c
++++ b/dlls/comdlg32/itemdlg.c
+@@ -120,6 +120,8 @@
+     IShellItem *psi_folder;
+ 
+     HWND dlg_hwnd;
++    BOOL native_active;
++    HRESULT native_result;
+     IExplorerBrowser *peb;
+     DWORD ebevents_cookie;
+ 
+@@ -2519,12 +2521,17 @@
+     return ref;
+ }
+ 
++#include "acrobat_native_dialog.h"
++
+ static HRESULT WINAPI IFileDialog2_fnShow(IFileDialog2 *iface, HWND hwndOwner)
+ {
+     FileDialogImpl *This = impl_from_IFileDialog2(iface);
++    HRESULT hr;
+     TRACE("%p (%p)\n", iface, hwndOwner);
+ 
+     This->opendropdown_has_selection = FALSE;
++    hr = show_native_open_dialog(This, hwndOwner);
++    if (hr != E_NOTIMPL) return hr;
+ 
+     return create_dialog(This, hwndOwner);
+ }
+@@ -2886,7 +2893,9 @@
+     FileDialogImpl *This = impl_from_IFileDialog2(iface);
+     TRACE("%p (0x%08lx)\n", This, hr);
+ 
+-    if(This->dlg_hwnd)
++    if (This->native_active)
++        This->native_result = hr;
++    else if(This->dlg_hwnd)
+         EndDialog(This->dlg_hwnd, hr);
+ 
+     return S_OK;

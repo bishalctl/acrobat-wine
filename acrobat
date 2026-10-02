@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname -- "$(realpath -- "$0")")/scripts/env.sh"
+
+log="${ACROBAT_LOG:-$ACROBAT_ROOT/logs/acrobat.log}"
+# Keep this installation on the version supplied by the user's ISO.
+export WINEDLLOVERRIDES="$WINEDLLOVERRIDES;adobearm.exe,adobearmhelper.exe,armsvc.exe=d"
+
+acrobat_exe="$WINEPREFIX/drive_c/Program Files/Adobe/Acrobat DC/Acrobat/Acrobat.exe"
+if [[ ! -f "$acrobat_exe" ]]; then
+    printf 'Acrobat is not installed in %s. Run ./setup.sh first.\n' "$WINEPREFIX" >&2
+    exit 1
+fi
+if [[ ! -f "$ACROBAT_ROOT/state/install-complete" ]]; then
+    printf 'Finish the ISO installer, then run ./setup.sh --finish before opening Acrobat.\n' >&2
+    exit 1
+fi
+
+python3 "$ACROBAT_ROOT/scripts/host_files.py" "$WINEPREFIX" \
+    > "$ACROBAT_ROOT/state/host-files.json"
+
+# Optional local test placement; normal launches follow the desktop's rules.
+if [[ "${ACROBAT_TEST_WORKSPACE:-}" == 4 && -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+    workspace_result="$(hyprctl eval "$(cat "$ACROBAT_ROOT/config/hyprland-workspace.lua")" 2>&1)" || {
+        printf 'Unable to set Acrobat workspace rules: %s\n' "$workspace_result" >&2
+        exit 1
+    }
+    if [[ "$workspace_result" != ok ]]; then
+        printf 'Unable to set Acrobat workspace rules: %s\n' "$workspace_result" >&2
+        exit 1
+    fi
+fi
+
+args=()
+for arg in "$@"; do
+    if [[ -e "$arg" ]]; then
+        # Convert through Z: without starting Wine before its logger is ready.
+        converted="$(python3 -c 'import pathlib,sys; print("Z:" + str(pathlib.Path(sys.argv[1]).resolve()).replace("/", "\\"))' "$arg")"
+        args+=("$converted")
+    else
+        args+=("$arg")
+    fi
+done
+
+exec python3 "$ACROBAT_ROOT/scripts/supervise.py" \
+    --log "$log" --prefix "$WINEPREFIX" --version 26.002.21931 \
+    -- "$WINE" "$acrobat_exe" "${args[@]}"

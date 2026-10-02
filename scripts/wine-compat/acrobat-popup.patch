@@ -1,0 +1,50 @@
+--- a/dlls/winex11.drv/window.c
++++ b/dlls/winex11.drv/window.c
+@@ -431,6 +431,30 @@
+ }
+ 
+ 
++/* Acrobat's layered AVL_AVWindow coachmarks are owned, borderless popups.
++ * Promoting them to managed windows on activation lets an X11 window manager
++ * decorate and reposition them independently of their document. Preserve
++ * their popup geometry and Win32 ownership, without changing real dialogs
++ * or floating tool windows.
++ */
++static BOOL is_acrobat_popup( HWND hwnd, DWORD style, DWORD ex_style )
++{
++    static const WCHAR popup_class[] = {'A','V','L','_','A','V','W','i','n','d','o','w',0};
++    WCHAR buffer[32];
++    UNICODE_STRING name = {0, sizeof(buffer), buffer};
++
++    if (!(style & WS_POPUP) || (style & (WS_CAPTION | WS_THICKFRAME | WS_SYSMENU)))
++        return FALSE;
++    if (!(ex_style & WS_EX_LAYERED) ||
++        (ex_style & (WS_EX_APPWINDOW | WS_EX_DLGMODALFRAME | WS_EX_TOOLWINDOW)))
++        return FALSE;
++    if (!NtUserGetWindowRelative( hwnd, GW_OWNER )) return FALSE;
++    if (NtUserGetClassName( hwnd, FALSE, &name ) != ARRAY_SIZE(popup_class) - 1)
++        return FALSE;
++    return !memcmp( buffer, popup_class, sizeof(popup_class) - sizeof(WCHAR) );
++}
++
++
+ /***********************************************************************
+  *		is_window_managed
+  *
+@@ -444,6 +468,8 @@
+     /* child windows are not managed */
+     style = NtUserGetWindowLongW( hwnd, GWL_STYLE );
+     if ((style & (WS_CHILD|WS_POPUP)) == WS_CHILD) return FALSE;
++    ex_style = NtUserGetWindowLongW( hwnd, GWL_EXSTYLE );
++    if (!fullscreen && is_acrobat_popup( hwnd, style, ex_style )) return FALSE;
+     /* activated windows are managed */
+     if (!(swp_flags & (SWP_NOACTIVATE|SWP_HIDEWINDOW))) return TRUE;
+     if (hwnd == get_active_window()) return TRUE;
+@@ -459,7 +485,6 @@
+         if (fullscreen) return TRUE;
+     }
+     /* application windows are managed */
+-    ex_style = NtUserGetWindowLongW( hwnd, GWL_EXSTYLE );
+     if (ex_style & WS_EX_APPWINDOW) return TRUE;
+     /* windows that own popups are managed */
+     if (has_owned_popups( hwnd )) return TRUE;

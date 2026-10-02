@@ -1,0 +1,3 @@
+LIBRARY wine_endtask
+EXPORTS
+    EndTask=WineEndTask

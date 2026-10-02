@@ -1,0 +1,35 @@
+Windows Registry Editor Version 5.00
+
+; Acrobat's protected process fails to start under this Wine configuration.
+; These compatibility settings are confined to the project's Wine profile.
+[HKEY_CURRENT_USER\Software\Adobe\Adobe Acrobat\DC\Privileged]
+"bProtectedMode"=dword:00000000
+"bEnableProtectedModeAppContainer"=dword:00000000
+
+; Use the classic interface described by the working Wine recipes.
+[HKEY_CURRENT_USER\Software\Adobe\Adobe Acrobat\DC\AVGeneral]
+"bEnableAV2"=dword:00000000
+
+; Keep GPU acceleration enabled, including during startup troubleshooting.
+[HKEY_CURRENT_USER\Software\Adobe\Adobe Acrobat\DC\CEF]
+"bDisableGPU"=dword:00000000
+
+; Same preference as declining the default-PDF-app prompt with its
+; "Do not show this message again" checkbox selected.
+[HKEY_CURRENT_USER\Software\Adobe\Adobe Acrobat\DC\AVAlert\cCheckbox]
+"iAppDoNotTakePDFOwnershipAtLaunchWin10"=dword:00000001
+
+; Microsoft's open Selawik family supplies consistent Segoe UI-style weights.
+; Wine exposes it during enumeration; an installed Segoe UI takes precedence.
+[HKEY_CURRENT_USER\Software\Wine\Fonts\Replacements]
+"Segoe UI"="Selawik"
+"Segoe UI Light"="Selawik Light"
+"Segoe UI Semilight"="Selawik Semilight"
+"Segoe UI Semibold"="Selawik Semibold"
+
+; ClearType smoothing for small UI text in this Wine profile.
+[HKEY_CURRENT_USER\Control Panel\Desktop]
+"FontSmoothing"="2"
+"FontSmoothingType"=dword:00000002
+"FontSmoothingOrientation"=dword:00000001
+"FontSmoothingGamma"=dword:00000578
